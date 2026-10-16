@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Đại Chiến Anh Áo Hoa - Boss Battle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600;700&family=VT323&family=Nunito:wght@700;800;900&display=swap');
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            user-select: none;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        .font-pixel {
+            font-family: 'VT323', monospace;
+        }
+
+        .font-action {
+            font-family: 'Teko', sans-serif;
+            letter-spacing: 1px;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); }
+            50% { box-shadow: 0 0 30px rgba(239, 68, 68, 0.9); }
+        }
+
+        .animate-boss-float {
+            animation: float 2.5s ease-in-out infinite;
+        }
+
+        .pulse-red {
+            animation: pulse-glow 2s infinite;
+        }
+
+        .boss-hurt {
+            filter: brightness(1.5) sepia(1) hue-rotate(-50deg) saturate(5);
+            transform: scale(0.95) rotate(-5deg);
+        }
+
+        .boss-attack {
+            transform: scale(1.1) translateX(-30px);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between items-center bg-slate-950 text-white relative">
+
+    <header class="w-full max-w-5xl px-4 py-2 flex justify-between items-center z-25">
+        <div class="flex items-center gap-2">
+            <span class="text-2xl">🧥</span>
+            <h1 class="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-amber-400 to-yellow-300 font-action">
+                ĐẠI CHIẾN ANH ÁO HOA
+            </h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <!-- Upload Photo Button for Player -->
+            <label for="player-file-input" class="cursor-pointer px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs md:text-sm flex items-center gap-1 shadow-md transition">
+                <i class="fas fa-user font-bold"></i> Chọn Ảnh Bạn
+            </label>
+            <input type="file" id="player-file-input" accept="image/*" class="hidden">
+
+            <!-- Upload Photo Button for Boss -->
+            <label for="boss-file-input" class="cursor-pointer px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs md:text-sm flex items-center gap-1 shadow-md transition">
+                <i class="fas fa-camera"></i> Chọn Ảnh Boss
+            </label>
+            <input type="file" id="boss-file-input" accept="image/*" class="hidden">
+
+            <button id="btn-sound" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-yellow-400 transition">
+                <i class="fas fa-volume-up text-lg"></i>
+            </button>
+            <button id="btn-info" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-blue-400 transition">
+                <i class="fas fa-info-circle text-lg"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="relative w-full max-w-5xl flex-1 flex flex-col justify-between items-center p-2 md:p-4 gap-2">
+        
+        <!-- Health & Status Bars Overlay -->
+        <div class="w-full grid grid-cols-2 gap-3 md:gap-8 z-10">
+            <!-- Player Stats -->
+            <div class="glass-panel p-3 rounded-2xl border-emerald-500/30 flex flex-col gap-1">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-emerald-400 flex items-center gap-1 text-sm md:text-base">
+                        <i class="fas fa-shield-halved"></i> BẠN (HỌC SINH)
+                    </span>
+                    <span id="player-hp-text" class="text-xs md:text-sm font-pixel text-emerald-300">120 / 120</span>
+                </div>
+                <div class="w-full h-4 bg-slate-900/80 rounded-full overflow-hidden border border-slate-700 p-0.5">
+                    <div id="player-hp-bar" class="h-full bg-gradient-to-r from-emerald-600 to-green-400 rounded-full transition-all duration-300" style="width: 100%;"></div>
+                </div>
+                <div class="flex justify-between items-center mt-1">
+                    <span class="text-xs text-amber-400 font-semibold">Năng Lượng Tuyệt Kỹ:</span>
+                    <div class="w-2/3 h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
+                        <div id="player-energy-bar" class="h-full bg-amber-400 transition-all duration-300" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Boss Stats -->
+            <div class="glass-panel p-3 rounded-2xl border-red-500/30 flex flex-col gap-1">
+                <div class="flex justify-between items-center">
+                    <span id="boss-hp-text" class="text-xs md:text-sm font-pixel text-red-300">350 / 350</span>
+                    <span class="font-bold text-red-400 flex items-center gap-1 text-sm md:text-base">
+                        ANH ÁO HOA <i class="fas fa-dragon text-yellow-500"></i>
+                    </span>
+                </div>
+                <div class="w-full h-4 bg-slate-900/80 rounded-full overflow-hidden border border-slate-700 p-0.5">
+                    <div id="boss-hp-bar" class="h-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 rounded-full transition-all duration-300" style="width: 100%;"></div>
+                </div>
+                <div class="flex justify-between items-center mt-1">
+                    <span id="boss-status" class="text-xs text-rose-300 italic">Trạng thái: Tự tin chói sáng</span>
+                    <span class="text-xs px-2 py-0.5 bg-red-950 text-red-400 rounded-md border border-red-800 font-mono">BOSS</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dialogue Bubble -->
+        <div id="dialogue-box" class="w-full glass-panel py-2 px-4 rounded-xl text-center border-amber-500/40 min-h-[44px] flex items-center justify-center z-10 transition-all duration-200">
+            <p id="dialogue-text" class="text-amber-200 text-sm md:text-base font-semibold italic">
+                "Áo hoa Tết này xịn chưa! Bấm nút 'Chọn Ảnh Boss' ở góc trên để nạp ảnh thật vào nhé!"
+            </p>
+        </div>
+
+        <!-- Battle Stage Container -->
+        <div id="stage-container" class="relative w-full flex-1 rounded-2xl overflow-hidden border-2 border-slate-800 shadow-2xl bg-slate-900 min-h-[300px] md:min-h-[400px] flex items-center justify-between px-4 md:px-16">
+            
+            <!-- Canvas for VFX particles & health/status animations -->
+            <canvas id="gameCanvas" class="absolute inset-0 w-full h-full z-0 block"></canvas>
+
+            <!-- PLAYER HTML DOM Element -->
+            <div id="player-element" class="relative z-10 flex flex-col items-center transition-transform duration-200 pointer-events-none my-auto">
+                <!-- Player Title Badge -->
+                <div class="bg-emerald-600/90 text-white border border-emerald-400 text-xs md:text-sm font-black px-3 py-0.5 rounded-full shadow-lg mb-2 tracking-wider uppercase">
+                    BẠN
+                </div>
+
+                <!-- Player Defense Shield Effect -->
+                <div id="player-shield-effect" class="hidden absolute inset-0 -m-3 rounded-3xl border-4 border-emerald-400 bg-emerald-500/20 animate-pulse"></div>
+
+                <!-- Player Image Frame -->
+                <div class="relative rounded-2xl overflow-hidden border-4 border-emerald-400 shadow-2xl bg-gradient-to-br from-emerald-600 to-teal-800 w-28 h-40 md:w-44 md:h-64 flex flex-col items-center justify-center text-center p-2">
+                    <img id="player-img" src="" alt="Bạn" class="absolute inset-0 w-full h-full object-cover object-center transition-all duration-150 hidden">
+                    
+                    <!-- Player Default Icon / Fallback -->
+                    <div id="player-placeholder" class="flex flex-col items-center justify-center text-white gap-2">
+                        <i class="fas fa-user-graduate text-4xl md:text-5xl text-emerald-300"></i>
+                        <span class="text-[10px] md:text-xs font-bold bg-black/60 px-2 py-1 rounded">Bấm "Chọn Ảnh Bạn"</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOSS HTML DOM Element with Image and Fallback Prompt -->
+            <div id="boss-element" class="relative z-10 flex flex-col items-center transition-transform duration-200 animate-boss-float pointer-events-none my-auto">
+                <!-- Boss Title Badge -->
+                <div class="bg-red-600/90 text-white border border-red-400 text-xs md:text-sm font-black px-3 py-0.5 rounded-full shadow-lg mb-2 tracking-wider uppercase">
+                    ANH ÁO HOA
+                </div>
+
+                <!-- Boss Shield Effect Overlay -->
+                <div id="boss-shield-effect" class="hidden absolute inset-0 -m-3 rounded-3xl border-4 border-cyan-400 bg-cyan-500/20 animate-pulse"></div>
+
+                <!-- Boss Image Frame -->
+                <div class="relative rounded-2xl overflow-hidden border-4 border-amber-400 shadow-2xl bg-gradient-to-br from-red-600 via-rose-700 to-amber-700 w-28 h-40 md:w-44 md:h-64 flex flex-col items-center justify-center text-center p-2">
+                    <img id="boss-img" src="" alt="Anh Áo Hoa" class="absolute inset-0 w-full h-full object-cover object-center transition-all duration-150 hidden">
+                    
+                    <!-- Boss Default Icon / Fallback Prompt -->
+                    <div id="boss-placeholder" class="flex flex-col items-center justify-center text-white gap-2">
+                        <i class="fas fa-image text-3xl md:text-4xl text-amber-300 animate-bounce"></i>
+                        <span class="text-[10px] md:text-xs font-bold bg-black/60 px-2 py-1 rounded">Bấm "Chọn Ảnh Boss"</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="w-full glass-panel p-3 rounded-2xl border-slate-700/60 z-10 flex flex-col gap-2">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <button id="btn-attack" class="group relative overflow-hidden p-3 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 hover:from-blue-600 hover:to-indigo-700 border border-slate-600 hover:border-blue-400 transition-all active:scale-95 flex flex-col items-center justify-center gap-1">
+                    <i class="fas fa-hand-fist text-xl text-blue-400 group-hover:text-white transition"></i>
+                    <span class="font-bold text-xs md:text-sm">Đấm Thường</span>
+                    <span class="text-[10px] text-slate-400 group-hover:text-blue-100">+25 NL | Hồi chiêu: 0s</span>
+                </button>
+
+                <button id="btn-kick" class="group relative overflow-hidden p-3 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 hover:from-amber-600 hover:to-orange-700 border border-slate-600 hover:border-amber-400 transition-all active:scale-95 flex flex-col items-center justify-center gap-1">
+                    <i class="fas fa-shoe-prints text-xl text-amber-400 group-hover:text-white transition"></i>
+                    <span class="font-bold text-xs md:text-sm">Cú Đá Cặp Sách</span>
+                    <span class="text-[10px] text-slate-400 group-hover:text-amber-100">Sát thương lớn</span>
+                </button>
+
+                <button id="btn-defend" class="group relative overflow-hidden p-3 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 hover:from-emerald-600 hover:to-teal-700 border border-slate-600 hover:border-emerald-400 transition-all active:scale-95 flex flex-col items-center justify-center gap-1">
+                    <i class="fas fa-shield-virus text-xl text-emerald-400 group-hover:text-white transition"></i>
+                    <span class="font-bold text-xs md:text-sm">Thủ & Hồi Máu</span>
+                    <span class="text-[10px] text-slate-400 group-hover:text-emerald-100">Giảm 50% ST + Hồi HP</span>
+                </button>
+
+                <button id="btn-ultimate" disabled class="group relative overflow-hidden p-3 rounded-xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 opacity-50 cursor-not-allowed transition-all flex flex-col items-center justify-center gap-1">
+                    <i class="fas fa-bolt text-xl text-yellow-400 group-hover:text-white transition"></i>
+                    <span class="font-bold text-xs md:text-sm text-yellow-300">Tuyệt Kỹ: Điểm 10</span>
+                    <span id="ult-status" class="text-[10px] text-yellow-500">Yêu cầu 100% NL</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div id="modal-info" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-panel p-6 rounded-2xl max-w-md w-full border-amber-500/50 flex flex-col gap-4">
+            <h2 class="text-2xl font-bold text-amber-400 flex items-center gap-2">
+                <i class="fas fa-scroll"></i> Hướng Dẫn Chiến Đấu
+            </h2>
+            <div class="text-sm text-slate-300 space-y-2">
+                <p><strong>1. Thêm ảnh Boss:</strong> Nhấn nút <span class="text-amber-400 font-bold">"Chọn Ảnh Boss"</span> ở góc trên để tải bức ảnh của bạn lên làm nhân vật Boss!</p>
+                <p><strong>2. Kỹ năng Boss:</strong> Anh Áo Hoa sở hữu áo phao rồng phượng phòng thủ, dép lê phản công và chiêu thức cực ngầu.</p>
+                <p><strong>3. Chiến thắng:</strong> Đánh hết thanh máu của Boss để giành chiến thắng vinh quang!</p>
+            </div>
+            <button id="btn-close-info" class="w-full py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl transition">
+                Đã Rõ! Vào Chiến Ngay
+            </button>
+        </div>
+    </div>
+
+    <div id="modal-end" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-panel p-8 rounded-3xl max-w-md w-full text-center border-2 flex flex-col items-center gap-4">
+            <div id="end-icon" class="text-6xl my-2">🏆</div>
+            <h2 id="end-title" class="text-3xl font-black font-action">CHIẾN THẮNG!</h2>
+            <p id="end-desc" class="text-slate-300 text-sm">
+                Bạn đã chinh phục thành công Anh Áo Hoa!
+            </p>
+            <button id="btn-restart" class="w-full py-3 bg-gradient-to-r from-red-500 to-amber-500 hover:from-red-600 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg transition active:scale-95 text-lg">
+                <i class="fas fa-rotate-right mr-2"></i> Chơi Lại
+            </button>
+        </div>
+    </div>
+
+    <script>
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playHit(freq = 150, type = 'sine') {
+                if (this.muted) return;
+                this.init();
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.15);
+                } catch(e) {}
+            }
+
+            playSpecial() {
+                if (this.muted) return;
+                this.init();
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(800, this.ctx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.3);
+                } catch(e) {}
+            }
+
+            playWin() {
+                if (this.muted) return;
+                this.init();
+                const notes = [261.63, 329.63, 392.00, 523.25];
+                notes.forEach((freq, idx) => {
+                    setTimeout(() => {
+                        try {
+                            const osc = this.ctx.createOscillator();
+                            const gain = this.ctx.createGain();
+                            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                            gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                            osc.connect(gain);
+                            gain.connect(this.ctx.destination);
+                            osc.start();
+                            osc.stop(this.ctx.currentTime + 0.3);
+                        } catch(e){}
+                    }, idx * 120);
+                });
+            }
+        }
+
+        const soundFx = new SoundEngine();
+
+        const gameState = {
+            player: {
+                maxHp: 120,
+                hp: 120,
+                energy: 0,
+                defending: false,
+                animState: 'idle'
+            },
+            boss: {
+                maxHp: 350,
+                hp: 350,
+                shield: false
+            },
+            turn: 'player',
+            particles: [],
+            floatingTexts: []
+        };
+
+        const bossQuotes = [
+            "Áo hoa Tết này xịn chưa! Đứng nhìn gì đó?",
+            "Làm phát lướt điện thoại né đòn cực êm!",
+            "Chăn con công nhập thể! Đỡ chiêu này!",
+            "Dép lê quạt gió! Đòn này siêu nhanh nha!",
+            "Nhìn áo anh có chói mắt quá không em?",
+            "Phao đỏ chống lạnh kiêm chống sát thương luôn!"
+        ];
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function triggerPlayerAttackAnim() {
+            const playerElem = document.getElementById('player-element');
+            playerElem.classList.add('translate-x-12', 'scale-105');
+            setTimeout(() => {
+                playerElem.classList.remove('translate-x-12', 'scale-105');
+            }, 300);
+        }
+
+        function triggerPlayerHurtAnim() {
+            const playerImgElem = document.getElementById('player-img');
+            const playerElem = document.getElementById('player-element');
+            playerElem.classList.add('scale-95', 'rotate-3');
+            if (playerImgElem) playerImgElem.style.filter = 'brightness(1.8) sepia(1) hue-rotate(-50deg)';
+            setTimeout(() => {
+                playerElem.classList.remove('scale-95', 'rotate-3');
+                if (playerImgElem) playerImgElem.style.filter = 'none';
+            }, 300);
+        }
+
+        function addParticles(x, y, color, count = 12) {
+            for (let i = 0; i < count; i++) {
+                gameState.particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8 - 2,
+                    size: Math.random() * 6 + 3,
+                    color,
+                    alpha: 1,
+                    life: 25
+                });
+            }
+        }
+
+        function addFloatingText(x, y, text, color = '#f8fafc') {
+            gameState.floatingTexts.push({
+                x, y,
+                text,
+                color,
+                alpha: 1,
+                vy: -2,
+                life: 30
+            });
+        }
+
+        function updateAndDrawVFX() {
+            for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                const p = gameState.particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 1 / p.life;
+
+                if (p.alpha <= 0) {
+                    gameState.particles.splice(i, 1);
+                    continue;
+                }
+
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, p.alpha);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            for (let i = gameState.floatingTexts.length - 1; i >= 0; i--) {
+                const ft = gameState.floatingTexts[i];
+                ft.y += ft.vy;
+                ft.alpha -= 1 / ft.life;
+
+                if (ft.alpha <= 0) {
+                    gameState.floatingTexts.splice(i, 1);
+                    continue;
+                }
+
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, ft.alpha);
+                ctx.fillStyle = ft.color;
+                ctx.font = 'black 24px Nunito, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = '#000';
+                ctx.shadowBlur = 4;
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ctx.restore();
+            }
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height * 0.85);
+            ctx.lineTo(canvas.width, canvas.height * 0.85);
+            ctx.stroke();
+
+            updateAndDrawVFX();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateUI() {
+            const pPct = Math.max(0, (gameState.player.hp / gameState.player.maxHp) * 100);
+            const bPct = Math.max(0, (gameState.boss.hp / gameState.boss.maxHp) * 100);
+
+            document.getElementById('player-hp-bar').style.width = `${pPct}%`;
+            document.getElementById('player-hp-text').innerText = `${Math.ceil(gameState.player.hp)} / ${gameState.player.maxHp}`;
+
+            document.getElementById('boss-hp-bar').style.width = `${bPct}%`;
+            document.getElementById('boss-hp-text').innerText = `${Math.ceil(gameState.boss.hp)} / ${gameState.boss.maxHp}`;
+
+            document.getElementById('player-energy-bar').style.width = `${gameState.player.energy}%`;
+
+            const ultBtn = document.getElementById('btn-ultimate');
+            const ultStatus = document.getElementById('ult-status');
+            if (gameState.player.energy >= 100) {
+                ultBtn.disabled = false;
+                ultBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-slate-900');
+                ultBtn.classList.add('bg-gradient-to-r', 'from-amber-500', 'to-yellow-400', 'text-slate-950', 'pulse-red');
+                ultStatus.innerText = 'SẴN SÀNG KHAI HỎA!';
+            } else {
+                ultBtn.disabled = true;
+                ultBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                ultBtn.classList.remove('pulse-red');
+                ultStatus.innerText = `NL: ${gameState.player.energy}% / 100%`;
+            }
+
+            const bossShieldFx = document.getElementById('boss-shield-effect');
+            if (gameState.boss.shield) {
+                bossShieldFx.classList.remove('hidden');
+            } else {
+                bossShieldFx.classList.add('hidden');
+            }
+
+            const playerShieldFx = document.getElementById('player-shield-effect');
+            if (gameState.player.defending) {
+                playerShieldFx.classList.remove('hidden');
+            } else {
+                playerShieldFx.classList.add('hidden');
+            }
+        }
+
+        function addFloatingText(x, y, text, color = '#f8fafc') {
+            gameState.floatingTexts.push({
+                x, y,
+                text,
+                color,
+                alpha: 1,
+                vy: -2,
+                life: 30
+            });
+        }
+
+        function updateAndDrawVFX() {
+            for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                const p = gameState.particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 1 / p.life;
+
+                if (p.alpha <= 0) {
+                    gameState.particles.splice(i, 1);
+                    continue;
+                }
+
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, p.alpha);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            for (let i = gameState.floatingTexts.length - 1; i >= 0; i--) {
+                const ft = gameState.floatingTexts[i];
+                ft.y += ft.vy;
+                ft.alpha -= 1 / ft.life;
+
+                if (ft.alpha <= 0) {
+                    gameState.floatingTexts.splice(i, 1);
+                    continue;
+                }
+
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, ft.alpha);
+                ctx.fillStyle = ft.color;
+                ctx.font = 'black 24px Nunito, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = '#000';
+                ctx.shadowBlur = 4;
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ctx.restore();
+            }
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height * 0.72);
+            ctx.lineTo(canvas.width, canvas.height * 0.72);
+            ctx.stroke();
+
+            drawPlayer(gameState.player.x, gameState.player.y, gameState.player.animState);
+            updateAndDrawVFX();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateUI() {
+            const pPct = Math.max(0, (gameState.player.hp / gameState.player.maxHp) * 100);
+            const bPct = Math.max(0, (gameState.boss.hp / gameState.boss.maxHp) * 100);
+
+            document.getElementById('player-hp-bar').style.width = `${pPct}%`;
+            document.getElementById('player-hp-text').innerText = `${Math.ceil(gameState.player.hp)} / ${gameState.player.maxHp}`;
+
+            document.getElementById('boss-hp-bar').style.width = `${bPct}%`;
+            document.getElementById('boss-hp-text').innerText = `${Math.ceil(gameState.boss.hp)} / ${gameState.boss.maxHp}`;
+
+            document.getElementById('player-energy-bar').style.width = `${gameState.player.energy}%`;
+
+            const ultBtn = document.getElementById('btn-ultimate');
+            const ultStatus = document.getElementById('ult-status');
+            if (gameState.player.energy >= 100) {
+                ultBtn.disabled = false;
+                ultBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-slate-900');
+                ultBtn.classList.add('bg-gradient-to-r', 'from-amber-500', 'to-yellow-400', 'text-slate-950', 'pulse-red');
+                ultStatus.innerText = 'SẴN SÀNG KHAI HỎA!';
+            } else {
+                ultBtn.disabled = true;
+                ultBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                ultBtn.classList.remove('pulse-red');
+                ultStatus.innerText = `NL: ${gameState.player.energy}% / 100%`;
+            }
+
+            const shieldFx = document.getElementById('boss-shield-effect');
+            if (gameState.boss.shield) {
+                shieldFx.classList.remove('hidden');
+            } else {
+                shieldFx.classList.add('hidden');
+            }
+        }
+
+        function showDialogue(text) {
+            document.getElementById('dialogue-text').innerText = `"${text}"`;
+        }
+
+        function triggerBossHurtAnim() {
+            const bossImgElem = document.getElementById('boss-img');
+            bossImgElem.classList.add('boss-hurt');
+            setTimeout(() => {
+                bossImgElem.classList.remove('boss-hurt');
+            }, 300);
+        }
+
+        function triggerBossAttackAnim() {
+            const bossElem = document.getElementById('boss-element');
+            bossElem.classList.add('boss-attack');
+            setTimeout(() => {
+                bossElem.classList.remove('boss-attack');
+            }, 300);
+        }
+
+        function checkGameOver() {
+            if (gameState.boss.hp <= 0) {
+                soundFx.playWin();
+                document.getElementById('end-icon').innerText = '🏆';
+                document.getElementById('end-title').innerText = 'CHIẾN THẮNG!';
+                document.getElementById('end-title').className = 'text-3xl font-black font-action text-amber-400';
+                document.getElementById('end-desc').innerText = 'Bạn đã khuất phục thành công Anh Áo Hoa!';
+                document.getElementById('modal-end').classList.remove('hidden');
+                return true;
+            } else if (gameState.player.hp <= 0) {
+                document.getElementById('end-icon').innerText = '💀';
+                document.getElementById('end-title').innerText = 'THẤT BẠI!';
+                document.getElementById('end-title').className = 'text-3xl font-black font-action text-red-500';
+                document.getElementById('end-desc').innerText = 'Áo Hoa quá mạnh! Hãy dùng chiêu Thủ để hồi HP nhé.';
+                document.getElementById('modal-end').classList.remove('hidden');
+                return true;
+            }
+            return false;
+        }
+
+        function bossTurn() {
+            if (checkGameOver()) return;
+
+            gameState.turn = 'boss';
+            const randomQuote = bossQuotes[Math.floor(Math.random() * bossQuotes.length)];
+            showDialogue(randomQuote);
+
+            const px = canvas.width * 0.22;
+            const py = canvas.height * 0.55;
+
+            setTimeout(() => {
+                const action = Math.random();
+                triggerBossAttackAnim();
+
+                if (action < 0.3) {
+                    soundFx.playHit(300, 'triangle');
+                    let dmg = 18;
+                    if (gameState.player.defending) dmg = Math.round(dmg * 0.5);
+
+                    gameState.player.hp -= dmg;
+                    triggerPlayerHurtAnim();
+                    addParticles(px, py, '#f43f5e', 15);
+                    addFloatingText(px, py - 40, `-${dmg}`, '#ef4444');
+                } else if (action < 0.6) {
+                    soundFx.playSpecial();
+                    let dmg = 24;
+                    if (gameState.player.defending) dmg = Math.round(dmg * 0.5);
+
+                    gameState.player.hp -= dmg;
+                    triggerPlayerHurtAnim();
+                    addParticles(px, py, '#fef08a', 20);
+                    addFloatingText(px, py - 40, `CHÓI MẮT! -${dmg}`, '#f59e0b');
+                } else if (action < 0.8) {
+                    gameState.boss.shield = true;
+                    addFloatingText(canvas.width * 0.75, canvas.height * 0.4, 'KHIÊN ÁO PHAO!', '#38bdf8');
+                } else {
+                    soundFx.playHit(100, 'sawtooth');
+                    let dmg = 35;
+                    if (gameState.player.defending) dmg = Math.round(dmg * 0.5);
+
+                    gameState.player.hp -= dmg;
+                    triggerPlayerHurtAnim();
+                    addParticles(px, py, '#e11d48', 30);
+                    addFloatingText(px, py - 40, `BẠO KÍCH! -${dmg}`, '#dc2626');
+                }
+
+                gameState.player.defending = false;
+                updateUI();
+
+                setTimeout(() => {
+                    if (!checkGameOver()) {
+                        gameState.turn = 'player';
+                    }
+                }, 500);
+            }, 800);
+        }
+
+        function playerAttack(type) {
+            if (gameState.turn !== 'player') return;
+            gameState.turn = 'animating';
+
+            triggerPlayerAttackAnim();
+
+            setTimeout(() => {
+                let dmg = 0;
+                if (type === 'normal') {
+                    soundFx.playHit(200);
+                    dmg = Math.floor(Math.random() * 12) + 18;
+                    gameState.player.energy = Math.min(100, gameState.player.energy + 25);
+                } else if (type === 'kick') {
+                    soundFx.playHit(120, 'square');
+                    dmg = Math.floor(Math.random() * 16) + 28;
+                    gameState.player.energy = Math.min(100, gameState.player.energy + 15);
+                } else if (type === 'ultimate') {
+                    soundFx.playSpecial();
+                    dmg = 75;
+                    gameState.player.energy = 0;
+                }
+
+                if (gameState.boss.shield) {
+                    dmg = Math.round(dmg * 0.5);
+                    gameState.boss.shield = false;
+                    addFloatingText(canvas.width * 0.75, canvas.height * 0.4, 'VỠ KHIÊN!', '#38bdf8');
+                }
+
+                gameState.boss.hp -= dmg;
+                triggerBossHurtAnim();
+
+                addParticles(canvas.width * 0.75, canvas.height * 0.5, '#f59e0b', 20);
+                addFloatingText(canvas.width * 0.75, canvas.height * 0.4, `-${dmg}`, '#fbbf24');
+
+                updateUI();
+
+                setTimeout(() => {
+                    if (!checkGameOver()) {
+                        bossTurn();
+                    }
+                }, 500);
+            }, 300);
+        }
+
+        function playerDefend() {
+            if (gameState.turn !== 'player') return;
+            gameState.turn = 'animating';
+
+            gameState.player.defending = true;
+            const heal = 15;
+            gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + heal);
+            gameState.player.energy = Math.min(100, gameState.player.energy + 20);
+
+            soundFx.playHit(400);
+            const px = canvas.width * 0.22;
+            const py = canvas.height * 0.55;
+            addParticles(px, py, '#34d399', 15);
+            addFloatingText(px, py - 40, `+${heal} HP`, '#34d399');
+
+            updateUI();
+
+            setTimeout(() => {
+                bossTurn();
+            }, 600);
+        }
+
+        window.onload = () => {
+            resizeCanvas();
+
+            // File input handler for loading the Player photo
+            const playerFileInput = document.getElementById('player-file-input');
+            playerFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const playerImg = document.getElementById('player-img');
+                        const placeholder = document.getElementById('player-placeholder');
+                        playerImg.src = event.target.result;
+                        playerImg.classList.remove('hidden');
+                        placeholder.classList.add('hidden');
+                        showDialogue("Bạn đã tải ảnh đại diện! Sẵn sàng đọ sức cùng Anh Áo Hoa!");
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // File input handler for loading the Boss photo
+            const bossFileInput = document.getElementById('boss-file-input');
+            bossFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const bossImg = document.getElementById('boss-img');
+                        const placeholder = document.getElementById('boss-placeholder');
+                        bossImg.src = event.target.result;
+                        bossImg.classList.remove('hidden');
+                        placeholder.classList.add('hidden');
+                        showDialogue("Đã nhận diện ảnh Boss! Trận chiến bắt đầu khốc liệt hơn rồi đấy!");
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            document.getElementById('btn-attack').onclick = () => playerAttack('normal');
+            document.getElementById('btn-kick').onclick = () => playerAttack('kick');
+            document.getElementById('btn-ultimate').onclick = () => playerAttack('ultimate');
+            document.getElementById('btn-defend').onclick = () => playerDefend();
+
+            document.getElementById('btn-sound').onclick = () => {
+                soundFx.muted = !soundFx.muted;
+                document.getElementById('btn-sound').innerHTML = soundFx.muted ?
+                    '<i class="fas fa-volume-mute text-lg text-red-400"></i>' :
+                    '<i class="fas fa-volume-up text-lg text-yellow-400"></i>';
+            };
+
+            document.getElementById('btn-info').onclick = () => {
+                document.getElementById('modal-info').classList.remove('hidden');
+            };
+
+            document.getElementById('btn-close-info').onclick = () => {
+                document.getElementById('modal-info').classList.add('hidden');
+            };
+
+            document.getElementById('btn-restart').onclick = () => {
+                gameState.player.hp = gameState.player.maxHp;
+                gameState.player.energy = 0;
+                gameState.boss.hp = gameState.boss.maxHp;
+                gameState.boss.shield = false;
+                gameState.turn = 'player';
+                document.getElementById('modal-end').classList.add('hidden');
+                showDialogue("Áo hoa Tết này xịn chưa! Lại đây giao lưu vài chiêu đi bạn nhỏ!");
+                updateUI();
+            };
+
+            updateUI();
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
